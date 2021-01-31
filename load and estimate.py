@@ -14,7 +14,9 @@ import pandas as pd
 from lmfit import Parameters, report_fit, minimize, fit_report
 from copy import deepcopy
 
-metadata = pd.read_excel("C:/Masterarbeit/Messdaten/metadata.xlsx", index_col = "fermentation")         #read metadata
+massdat_path = '/Users/sauers/Nextcloud/Austauschordner_Masterarbeit_P_Senck/Messdaten2' # for Simeon's Macbook
+
+metadata = pd.read_excel(os.path.join(massdat_path,"metadata.xlsx"), index_col = "fermentation")         #read metadata
 
 
 exp_numbers =[4,5,6,7,8]                                           # list with number of each experiment, hilft bei der Benennung von Experimenten
@@ -30,15 +32,17 @@ for  timestamp, i  in zip(metadata["end1"].T, exp_numbers):        # create dict
     end_dict["end{0}".format(i)]= timestamp
 
 
-path_On = r'C:\Masterarbeit\Messdaten\online'                      # use your path, Einfach den Ordner Masterarbeit aus Dropbox auf C ziehen
-online_files = glob.glob(os.path.join(path_On, "*.csv"))           #create list of online files 
+path_On = os.path.join(massdat_path, 'online')
+
+#online_files = glob.glob(os.path.join(path_On, "*.CSV"))           #create list of online files 
+online_files = [os.path.join(path_On,"online{0}.CSV".format(i)) for i in exp_numbers]
 
 online_dict = {}
 
 for f, i in zip(online_files, exp_numbers):                        #create dict with online[number] as key and dataframe as value
-    online_dict["online{0}".format(i)] = pd.read_csv(f,sep=";",encoding= 'unicode_escape',decimal=",",
-skiprows=[1,2] , skipfooter=1, engine ="python", 
-usecols = ["PDatTime","BASET"])
+    online_dict["online{0}".format(i)] = pd.read_csv(f,sep=";",encoding= 'unicode_escape',decimal=",", skiprows=[1,2] , skipfooter=1, engine ="python", usecols = ["PDatTime","BASET"])
+
+print('Vorher: ', online_dict)
 
 for df, start, end, i in zip( online_dict.values(), start_dict.values(), end_dict.values(), exp_numbers ):   #loop to process online data, timeframe, indexset, base_rate creation
     df["PDatTime"] = pd.to_datetime( df["PDatTime"], format = "%d.%m.%Y  %H:%M:%S" )
@@ -49,13 +53,16 @@ for df, start, end, i in zip( online_dict.values(), start_dict.values(), end_dic
     df["base_rate"] = df["BASET"].diff()    #differential bilden der BASET werte 
     online_dict["online{0}".format(i)] = df
 
+print('Nachher', online_dict)
 
 special_start_for_online8 = pd.to_datetime("14.12.2020  12:20:16")  #special start weil der schlauch ein loch hatte und am anfang zu viel base gepumpt wurde
 online_dict["online8"] = online_dict["online8"][(df["PDatTime"] >= special_start_for_online8 )]  # vom 8ten Lauf die erste Zeit abschneiden für verlässliche base_rate values
 
 
-path_Off = r'C:\Masterarbeit\Messdaten\offline'             #read offline values in a dict
-offline_files = glob.glob(os.path.join(path_Off, "*.csv"))           
+path_Off = os.path.join(massdat_path, 'offline')             #read offline values in a dict
+#offline_files = glob.glob(os.path.join(path_Off, "*.csv"))  # Simeon: hat mit '*.csv' nicht funktioniert...         
+offline_files = [os.path.join(path_Off,"offline{0}.CSV".format(i)) for i in exp_numbers]
+
 offline_dict = {}
 
 for f, i in zip(offline_files, exp_numbers):             # create offline dict          
@@ -80,8 +87,10 @@ for df, end_lag, start_lag in zip(offline_dict.values(), end_lag_list, start_lag
 Gly_per_Et = np.mean(mean_cGly_cE_list)         #mean over all experiments
 
 
-path_CO2 = r'C:\Masterarbeit\Messdaten\CO2'             
-CO2_files = glob.glob(os.path.join(path_CO2, "*.dat"))           
+path_CO2 = os.path.join(massdat_path, 'CO2')            
+#CO2_files = glob.glob(os.path.join(path_CO2, "*.dat"))  
+CO2_files = [os.path.join(path_CO2,"co2_{0}.dat".format(i)) for i in exp_numbers]
+
 CO2_dict = {}
 
 for f, i in zip(CO2_files, exp_numbers):                 #read CO2 values in a dict        
@@ -119,8 +128,8 @@ except Exception:
 len_off_div_on = []                 # making lists for weighting factors with len(dfOff)/len(df2On or dfCO2) as values 
 len_off_div_CO2 = []
 for online, offline, CO2 in zip (online_dict.values(), offline_dict.values(), CO2_dict.values()):
-    off_div_on = len(offline)/len(online)
-    off_div_CO2 = len(offline)/len(CO2)
+    off_div_on = len(offline)/np.max([len(online),1]) # Änderung Simeon
+    off_div_CO2 = len(offline)/np.max([len(CO2),1])   # Änderung Simeon
     len_off_div_on.append(off_div_on)
     len_off_div_CO2.append(off_div_CO2)
 
@@ -178,6 +187,7 @@ p0.add('YesRed', value=0.4792, vary=False)
 p0.add('Yco2xRed', value=9.244, vary=False)
 p0.add('Yco2xOx', value=1.233, vary=False)
 p0.add('Yco2xEt', value=0.8957471802080247, vary=False)   
+
 
 
 

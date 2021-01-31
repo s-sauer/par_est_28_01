@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 from scipy.integrate import solve_ivp
 
-def model_rhs(t, y, p, c): 
 
-
+#      global inner_model
+def inner_model(t,y, p, c):     
       """ r.h.s. (right hand side) function of the ODE model 
 
       INPUT:
@@ -61,54 +61,52 @@ def model_rhs(t, y, p, c):
       Fin = feed_rate * (t > feed_on) # becomes 0 if t < feed_on
       csf = c[2] # substrate concentration in feed [g/L]
 
+      # masses and concentrations
+      mS, mX, mE, V = y
+      cS, cX, cE = [mS, mX, mE] / V    
 
-      global inner_model
-      def inner_model(t,y, p, c):
-            # masses and concentrations
-            mS, mX, mE, V = y
-            cS, cX, cE = [mS, mX, mE] / V    
+      cSCrab = p['cSCrab'].value
 
-            cSCrab = p['cSCrab'].value
+      #kinetics
+      qs = qsmax * cS / (cS + Ks)
 
-            #kinetics
-            qs = qsmax * cS / (cS + Ks)
+      #qSOx_max = qsmax  * cSCrab / (cSCrab + Ks)
 
-            if cS > cSCrab:
-                  qsOx = qsmax  * cSCrab / (cSCrab + Ks)
-                  qsRed = qs - qsOx 
-                  muE = 0.0
-                  
-            else:
-                  qsOx = qs  
-                  qsRed = 0
-                  muE = mumaxE* cE/(cE + Ke) * Ki / (cS+ Ki)
+      if cS > cSCrab: # qS > qSOx_max
+            qsOx = qsmax  * cSCrab / (cSCrab + Ks) # qsOx = qsOxmax
+            qsRed = qs - qsOx 
+            muE = 0.0
+            
+      else:
+            qsOx = qs  
+            qsRed = 0
+            muE = mumaxE* cE/(cE + Ke) * Ki / (cS+ Ki)
 
-            muOx = qsOx * YxsOx
-            muRed = qsRed * YxsRed
-            qE = 1/Yxe * muE
+      muOx = qsOx * YxsOx
+      muRed = qsRed * YxsRed
+      qE = 1/Yxe * muE
 
-            #r.h.s. of ODE
-            # c_dict hat list values mit der Rheienfolge : 0: feed_on, 1 : feed_rate ,2: csf, 3: M_base, 4: gas_flow, 5: Glycerin pro ET factor, 6: timepoint end lagEt
+      #r.h.s. of ODE
+      # c_dict hat list values mit der Rheienfolge : 0: feed_on, 1 : feed_rate ,2: csf, 3: M_base, 4: gas_flow, 5: Glycerin pro ET factor, 6: timepoint end lagEt
 
-            dmS_dt = cX *V*(- qsOx- qsRed)+ csf *Fin
-            dmX_dt = (muOx+muRed+muE) * cX * V
-
-                        
-            dmE_dt = (qsRed * YesRed - qE)*cX*V
-
-            dV_dt  = + Fin
-
-            dmCO2_dt = (muRed* Yco2xRed + muOx*Yco2xOx + muE * Yco2xEt) *cX*V
-            dnCO2_dt = dmCO2_dt/M_CO2
-            dvCO2_dt = (dnCO2_dt*R*T)/pressure
-
-            CO2_percent = 100 * dvCO2_dt / dV_gas_dt
+      dmS_dt = cX *V*(- qsOx- qsRed)+ csf *Fin
+      dmX_dt = (muOx+muRed+muE) * cX * V
 
                   
-            return dmS_dt, dmX_dt, dmE_dt,  dV_dt, CO2_percent
-    
+      dmE_dt = (qsRed * YesRed - qE)*cX*V
+
+      dV_dt  = + Fin
+
+      dmCO2_dt = (muRed* Yco2xRed + muOx*Yco2xOx + muE * Yco2xEt) *cX*V
+      dnCO2_dt = dmCO2_dt/M_CO2
+      dvCO2_dt = (dnCO2_dt*R*T)/pressure
+
+      CO2_percent = 100 * dvCO2_dt / dV_gas_dt
+
+      return dmS_dt, dmX_dt, dmE_dt,  dV_dt, CO2_percent
+
+def model_rhs(t, y, p, c): 
       dmS_dt, dmX_dt, dmE_dt,  dV_dt, CO2_percent = inner_model(t,y, p, c)
-      
       return dmS_dt, dmX_dt, dmE_dt,  dV_dt
 
 
