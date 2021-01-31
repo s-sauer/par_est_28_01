@@ -70,21 +70,22 @@ def inner_model(t,y, p, c):
       #kinetics
       qs = qsmax * cS / (cS + Ks)
 
-      #qSOx_max = qsmax  * cSCrab / (cSCrab + Ks)
+      qSOx_max = qsmax  * cSCrab / (cSCrab + Ks)  # alternativ: qSOx_max direkt als Parameter einführen anstelle von cSCrab
 
-      if cS > cSCrab: # qS > qSOx_max
-            qsOx = qsmax  * cSCrab / (cSCrab + Ks) # qsOx = qsOxmax
+      if qs > qSOx_max:
+            qsOx = qSOx_max
             qsRed = qs - qsOx 
-            muE = 0.0
+            qE = 0.0
             
       else:
             qsOx = qs  
             qsRed = 0
-            muE = mumaxE* cE/(cE + Ke) * Ki / (cS+ Ki)
+            Yo2eEt = 1.1174848958621104  # to do: diese Ausbeutekoeff wie die anderen behandeln, also für Stöchiometrie
+            qE = qSOx_max * cE/(cE + Ke) / Yo2eEt
 
       muOx = qsOx * YxsOx
       muRed = qsRed * YxsRed
-      qE = 1/Yxe * muE
+      muE = Yxe * qE
 
       #r.h.s. of ODE
       # c_dict hat list values mit der Rheienfolge : 0: feed_on, 1 : feed_rate ,2: csf, 3: M_base, 4: gas_flow, 5: Glycerin pro ET factor, 6: timepoint end lagEt

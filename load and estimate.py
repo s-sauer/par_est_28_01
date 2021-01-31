@@ -42,8 +42,6 @@ online_dict = {}
 for f, i in zip(online_files, exp_numbers):                        #create dict with online[number] as key and dataframe as value
     online_dict["online{0}".format(i)] = pd.read_csv(f,sep=";",encoding= 'unicode_escape',decimal=",", skiprows=[1,2] , skipfooter=1, engine ="python", usecols = ["PDatTime","BASET"])
 
-print('Vorher: ', online_dict)
-
 for df, start, end, i in zip( online_dict.values(), start_dict.values(), end_dict.values(), exp_numbers ):   #loop to process online data, timeframe, indexset, base_rate creation
     df["PDatTime"] = pd.to_datetime( df["PDatTime"], format = "%d.%m.%Y  %H:%M:%S" )
     df = df[(df["PDatTime"] >= start ) &  (df["PDatTime"] <= end)]  #Zeit filtern
@@ -52,8 +50,6 @@ for df, start, end, i in zip( online_dict.values(), start_dict.values(), end_dic
     df["BASET"] = pd.to_numeric(df["BASET"], downcast="float", errors='coerce') # Bei BASET gab es vereinzelnte Messwerte die vorher kein fLoat waren
     df["base_rate"] = df["BASET"].diff()    #differential bilden der BASET werte 
     online_dict["online{0}".format(i)] = df
-
-print('Nachher', online_dict)
 
 special_start_for_online8 = pd.to_datetime("14.12.2020  12:20:16")  #special start weil der schlauch ein loch hatte und am anfang zu viel base gepumpt wurde
 online_dict["online8"] = online_dict["online8"][(df["PDatTime"] >= special_start_for_online8 )]  # vom 8ten Lauf die erste Zeit abschneiden für verlässliche base_rate values
@@ -172,11 +168,11 @@ p0.add('qsmax', value=0.5, min=0.0001, max=5.0 , vary = True)
 p0.add('mumaxE', value=0.17, vary=False)
 p0.add('base_coef', value=1, min=0.0001, vary = True) 
 
-p0.add('cSCrab', value=0.1, min=0.008, max=0.15, vary = False)
+p0.add('cSCrab', value=0.1, min=0.008, max=0.15, vary = True)
   
 p0.add('Ks', value=0.1, vary=False)
-p0.add('Ke', value=0.1, vary=False)
-p0.add('Ki', value=0.1, vary=False)
+p0.add('Ke', value=3.0, vary=True)   # jetzt wichiger Parameter!
+p0.add('Ki', value=0.1, vary=False)  # obsolete
 
 p0.add('YxsOx', value=0.49, vary=False)
 p0.add('YxsRed', value=0.05, vary=False)
